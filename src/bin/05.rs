@@ -1,6 +1,24 @@
-use std::collections::HashMap;
+use std::{
+    cmp::Ordering,
+    collections::HashMap,
+};
 
 advent_of_code::solution!(5);
+
+fn valid_update(update: &Vec<u32>, rules: &HashMap<u32, Vec<u32>>) -> bool {
+    let mut nono_list = vec![];
+    for page in update {
+        if nono_list.contains(page) {
+            return false;
+        }
+        if let Some(v) = rules.get(page) {
+            let mut v = v.clone();
+            nono_list.append(&mut v);
+        }
+    }
+
+    true
+}
 
 pub fn part_one(input: &str) -> Option<u32> {
     let (rules_input, updates) = input.split_once("\n\n").unwrap();
@@ -8,7 +26,6 @@ pub fn part_one(input: &str) -> Option<u32> {
     let mut ans = 0;
 
     for line in rules_input.lines() {
-        // println!("{} -> {}", &line[0..2], &line[3..5]);
         let before: u32 = line[0..2].parse().unwrap();
         let after: u32 = line[3..5].parse().unwrap();
 
@@ -17,46 +34,29 @@ pub fn part_one(input: &str) -> Option<u32> {
             .and_modify(|v| v.push(before))
             .or_insert(vec![before]);
     }
-    // println!("{:?}", rules);
 
-    'update: for update in updates.lines() {
-        let update: Vec<u32> = update.split(',').map(|v| v.parse().unwrap()).collect();
-        let mut nono_list = vec![];
-        for page in &update {
-            if nono_list.contains(page) {
-                continue 'update;
-            }
-            if let Some(v) = rules.get(page) {
-                let mut v = v.clone();
-                nono_list.append(&mut v);
-            }
+    for update_line in updates.lines() {
+        let update: Vec<u32> = (0..update_line.len())
+            .step_by(3)
+            .map(|i| update_line[i..i + 2].parse().unwrap())
+            .collect();
+
+        if valid_update(&update, &rules) {
+            ans += update[update.len() / 2];
         }
-        ans += update[update.len() / 2];
     }
 
     Some(ans)
 }
 
-// If update is valid, return none, otherwise the index of the invalid page
-fn valid_update(update: &Vec<u32>, rules: &HashMap<u32, Vec<u32>>) -> Option<(usize, usize)> {
-    let mut nono_list = vec![];
-    let mut reason = HashMap::new();
-    for (i, page) in update.iter().enumerate() {
-        if nono_list.contains(page) {
-            return Some((i, *reason.get(page).unwrap()));
-        }
-        if let Some(v) = rules.get(page) {
-            for v in v {
-                if reason.get(v).is_none() {
-                    reason.insert(v, i);
-                }
-            }
-            let mut v = v.clone();
-            nono_list.append(&mut v);
-        }
+fn sort_update(x: &u32, y: &u32, rules: &HashMap<u32, Vec<u32>>) -> Ordering {
+    if rules.get(x).is_some_and(|v| v.contains(y)) {
+        Ordering::Greater
+    } else if rules.get(y).is_some_and(|v| v.contains(x)) {
+        Ordering::Less
+    } else {
+        Ordering::Equal
     }
-
-    None
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
@@ -74,15 +74,16 @@ pub fn part_two(input: &str) -> Option<u32> {
             .or_insert(vec![before]);
     }
 
-    for update in updates.lines() {
-        let mut update: Vec<u32> = update.split(',').map(|v| v.parse().unwrap()).collect();
-        if valid_update(&update, &rules).is_none() {
+    for update_line in updates.lines() {
+        let mut update: Vec<u32> = (0..update_line.len())
+            .step_by(3)
+            .map(|i| update_line[i..i + 2].parse().unwrap())
+            .collect();
+        if valid_update(&update, &rules) {
             continue;
         }
-        while let Some((i, j)) = valid_update(&update, &rules) {
-            update.swap(i, j);
-        }
-        ans += update[update.len()/2];
+        update.sort_by(|x, y| sort_update(x, y, &rules));
+        ans += update[update.len() / 2];
     }
 
     Some(ans)
