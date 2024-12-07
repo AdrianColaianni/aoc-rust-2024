@@ -1,67 +1,87 @@
 advent_of_code::solution!(7);
 
-fn try_solve(prev: u128, mut vals: Vec<u128>, total: u128) -> bool {
-    if prev > total {
-        return false;
-    }
-    if vals.is_empty() {
+use rayon::prelude::*;
+
+fn try_solve(prev: u64, vals: &Vec<u64>, mut i: usize, total: u64) -> bool {
+    if i == vals.len() {
         return prev == total;
     }
 
-    let next = vals.remove(0);
-    return try_solve(prev + next, vals.clone(), total) || try_solve(prev * next, vals, total);
+    let next = vals[i];
+    i += 1;
 
+    let add = prev + next;
+    let mul = prev * next;
+
+    if i == vals.len() {
+        return add == total || mul == total;
+    }
+    match (add > total, mul > total) {
+        (true, true) => false,
+        (true, false) => try_solve(mul, vals, i, total),
+        (false, true) => try_solve(add, vals, i, total),
+        (false, false) => try_solve(add, vals, i, total) || try_solve(mul, vals, i, total),
+    }
 }
 
-pub fn part_one(input: &str) -> Option<u128> {
-    let mut ans: u128 = 0;
+pub fn part_one(input: &str) -> Option<u64> {
     let input = input.trim();
-    for line in input.lines() {
+    let ans = input.par_lines().map(|line| {
         let (total, vals) = line.split_once(": ").unwrap();
-        let total: u128 = total.parse().unwrap();
-        let mut vals: Vec<u128> = vals.split(' ').map(|v| v.parse().unwrap()).collect();
-        let prev = vals.remove(0);
+        let total: u64 = total.parse().unwrap();
+        let vals: Vec<u64> = vals.split(' ').map(|v| v.parse().unwrap()).collect();
 
-        if try_solve(prev, vals, total) {
-            ans = ans.checked_add(total)?;
+        if try_solve(vals[0], &vals, 1, total) {
+            total
+        } else {
+            0
         }
-    }
+    }).sum();
 
     Some(ans)
 }
 
-fn int_concat(x: u128, y: u128) -> u128 {
-    let mut v = x.to_string();
-    v.push_str(&y.to_string());
-    v.parse().unwrap()
+fn int_concat(x: u64, y: u64) -> u64 {
+    let l = y.ilog10() + 1;
+    x * 10_u64.pow(l) + y
 }
 
-fn try_solve_p2(prev: u128, mut vals: Vec<u128>, total: u128) -> bool {
+fn try_solve_p2(prev: u64, vals: &Vec<u64>, mut i: usize, total: u64) -> bool {
     if prev > total {
         return false;
     }
-    if vals.is_empty() {
+    if i == vals.len() {
         return prev == total;
     }
 
-    let next = vals.remove(0);
-    return try_solve_p2(prev + next, vals.clone(), total) || try_solve_p2(prev * next, vals.clone(), total) || try_solve_p2(int_concat(prev, next), vals, total);
+    let next = vals[i];
+    i += 1;
 
+    let add = prev + next;
+    let mul = prev * next;
+    let cat = int_concat(prev, next);
+
+    if i == vals.len() {
+        return add == total || mul == total || cat == total;
+    }
+    return (add <= total && try_solve_p2(add, vals, i, total))
+        || (mul <= total && try_solve_p2(mul, vals, i, total))
+        || (cat <= total && try_solve_p2(cat, vals, i, total));
 }
 
-pub fn part_two(input: &str) -> Option<u128> {
-    let mut ans: u128 = 0;
+pub fn part_two(input: &str) -> Option<u64> {
     let input = input.trim();
-    for line in input.lines() {
+    let ans = input.par_lines().map(|line| {
         let (total, vals) = line.split_once(": ").unwrap();
-        let total: u128 = total.parse().unwrap();
-        let mut vals: Vec<u128> = vals.split(' ').map(|v| v.parse().unwrap()).collect();
-        let prev = vals.remove(0);
+        let total: u64 = total.parse().unwrap();
+        let vals: Vec<u64> = vals.split(' ').map(|v| v.parse().unwrap()).collect();
 
-        if try_solve_p2(prev, vals, total) {
-            ans = ans.checked_add(total)?;
+        if try_solve_p2(vals[0], &vals, 1, total) {
+            total
+        } else {
+            0
         }
-    }
+    }).sum();
 
     Some(ans)
 }
