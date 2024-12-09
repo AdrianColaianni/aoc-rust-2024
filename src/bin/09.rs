@@ -133,6 +133,10 @@ pub fn part_two(input: &str) -> Option<usize> {
                         j += 1;
                     }
                 }
+            } else if size == 1 {
+                // If the size is 1 and we can't find a spot to move it,
+                // everything is filled
+                break;
             }
         }
         i -= 1;
