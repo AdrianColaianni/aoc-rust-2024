@@ -139,6 +139,9 @@ fn visisted_spots(map: &Vec<Vec<bool>>, mut pos: Pos) -> Vec<Pos> {
 
 fn map_loops(map: &Vec<Vec<bool>>, mut pos: Pos, mut dir: Dir) -> bool {
     let lim = Pos::new(map.len(), map[0].len());
+    let start_dir = dir;
+    let start_pos = pos;
+    let mut tries = 7000;
     let mut spots = HashSet::new();
 
     loop {
@@ -152,10 +155,17 @@ fn map_loops(map: &Vec<Vec<bool>>, mut pos: Pos, mut dir: Dir) -> bool {
         if !next_pos.in_bounds(&lim) {
             return false;
         }
-        if !spots.insert((pos, dir)) {
+        if dir == start_dir && next_pos == start_pos {
             // If we've been in the same place facing the same direction,
             // we've looped
             return true;
+        }
+        if tries == 0 {
+            if !spots.insert((pos, dir)) {
+                return true;
+            }
+        } else {
+            tries -= 1;
         }
         pos = next_pos;
     }
