@@ -2,7 +2,6 @@ advent_of_code::solution!(9);
 
 pub fn part_one(input: &str) -> Option<usize> {
     let map: Vec<char> = input.trim().chars().collect();
-    // println!("{:?}", map);
     let mut blocks: Vec<Option<usize>> = vec![];
 
     for i in 0..map.len() {
@@ -11,19 +10,14 @@ pub fn part_one(input: &str) -> Option<usize> {
             let id = i / 2;
             for _ in 0..file {
                 blocks.push(Some(id));
-                // print!("{}", id);
             }
         } else {
             let space: usize = map[i].to_digit(10).unwrap() as usize;
             for _ in 0..space {
                 blocks.push(None);
             }
-            // print!("{}", ".".repeat(space));
         }
     }
-    // println!();
-
-    // println!("{:?}", blocks);
 
     let mut i = 0;
     loop {
@@ -37,11 +31,8 @@ pub fn part_one(input: &str) -> Option<usize> {
         while blocks[i].is_none() {
             blocks[i] = blocks.pop().unwrap();
         }
-        // println!("Index {} empty, now has {:?}", i, blocks[i]);
         i += 1;
     }
-
-    // println!("{:?}", blocks);
 
     let mut ans = 0;
 
@@ -110,45 +101,42 @@ pub fn part_two(input: &str) -> Option<usize> {
         if i == 0 {
             break;
         }
-        match blocks[i] {
-            Node::File(id, size) => {
-                if let Some((free_idx, free)) = blocks
-                    .iter()
-                    .enumerate()
-                    .filter(|(bi, b)| *bi < i && b.is_free() && b.size() >= size)
-                    .next()
-                {
-                    // println!("Can fit block {} in at {}", id, free_idx);
-                    if size == free.size() {
-                        blocks[free_idx] = blocks[i];
-                        blocks[i] = Node::Space(size);
-                    } else {
-                        blocks[free_idx].sub(size);
-                        blocks.insert(free_idx, blocks[i]);
-                        blocks[i + 1] = Node::Space(size);
-                    }
-                    // Combine nearby spaces
-                    let mut i = 0;
-                    loop {
-                        if i == blocks.len() - 1 {
-                            break;
-                        }
-                        if blocks[i].is_free() && blocks[i + 1].is_free() {
-                            let size = blocks.remove(i + 1).size();
-                            blocks[i].add(size);
-                        } else {
-                            i += 1;
-                        }
-                    }
-                    // println!("{:?}", blocks);
+        if let Node::File(_, size) = blocks[i] {
+            let mut free_block: Option<(usize, &Node)> = None;
+            for i in 0..i {
+                if blocks[i].is_free() && blocks[i].size() >= size {
+                    free_block = Some((i, &blocks[i]));
+                    break;
                 }
             }
-            Node::Space(_) => (),
+            if let Some((free_idx, free)) = free_block {
+                if size == free.size() {
+                    blocks[free_idx] = blocks[i];
+                    blocks[i] = Node::Space(size);
+                } else {
+                    blocks[free_idx].sub(size);
+                    blocks.insert(free_idx, blocks[i]);
+                    blocks[i + 1] = Node::Space(size);
+                }
+                // Combine free spaces
+                let mut j = i;
+                let mut lim = (i + 2).min(blocks.len() - 1);
+                loop {
+                    if j == lim {
+                        break;
+                    }
+                    if blocks[j].is_free() && blocks[j + 1].is_free() {
+                        let size = blocks.remove(j + 1).size();
+                        blocks[j].add(size);
+                        lim -= 1;
+                    } else {
+                        j += 1;
+                    }
+                }
+            }
         }
         i -= 1;
     }
-
-    // println!("{:?}", blocks);
 
     let mut ans = 0;
     let mut i = 0;
