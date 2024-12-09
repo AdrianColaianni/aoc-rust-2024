@@ -1,69 +1,106 @@
-use std::collections::HashSet;
 use rayon::prelude::*;
+use std::collections::HashSet;
 
 advent_of_code::solution!(6);
 
-#[derive(Hash, Eq, PartialEq, Clone, Copy)]
-enum Direction {
+#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
+enum Dir {
     Up,
     Right,
     Down,
     Left,
 }
 
-impl Direction {
-    fn next(&mut self) {
-        *self = match self {
-            Direction::Up => Direction::Right,
-            Direction::Right => Direction::Down,
-            Direction::Down => Direction::Left,
-            Direction::Left => Direction::Up,
+impl Dir {
+    fn new(x: &Pos, y: &Pos) -> Self {
+        let rd = x.row as isize - y.row as isize;
+        let cd = x.col as isize - y.col as isize;
+        if rd < 0 {
+            Dir::Up
+        } else if rd > 0 {
+            Dir::Down
+        } else if cd < 0 {
+            Dir::Left
+        } else {
+            Dir::Right
         }
     }
 
-    fn move_pos(&self, pos: (usize, usize)) -> (usize, usize) {
-        let mut pos = pos;
+    fn next(&mut self) {
+        *self = match self {
+            Dir::Up => Dir::Right,
+            Dir::Right => Dir::Down,
+            Dir::Down => Dir::Left,
+            Dir::Left => Dir::Up,
+        }
+    }
+
+    fn move_pos(&self, mut pos: Pos) -> Pos {
         match self {
-            Direction::Up => pos.0 -= 1,
-            Direction::Right => pos.1 += 1,
-            Direction::Down => pos.0 += 1,
-            Direction::Left => pos.1 -= 1,
+            Dir::Up => pos.row -= 1,
+            Dir::Right => pos.col += 1,
+            Dir::Down => pos.row += 1,
+            Dir::Left => pos.col -= 1,
         }
         pos
     }
 }
 
-fn serialize(input: &str) -> (Vec<Vec<bool>>, (usize, usize)) {
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct Pos {
+    row: usize,
+    col: usize,
+}
+
+impl std::fmt::Debug for Pos {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.row, self.col)
+    }
+}
+
+// More efficient that derive(Hash)
+impl std::hash::Hash for Pos {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let l = self.col.checked_ilog10().map(|v| v + 1).unwrap_or(0);
+        (self.row * 10_usize.pow(l) + self.col).hash(state);
+    }
+}
+
+impl Pos {
+    fn new(row: usize, col: usize) -> Self {
+        Self { row, col }
+    }
+
+    fn in_bounds(&self, bounds: &Pos) -> bool {
+        self.row < bounds.row - 1 && self.col < bounds.col - 1 && self.row != 0 && self.col != 0
+    }
+}
+
+fn serialize(input: &str) -> (Vec<Vec<bool>>, Pos) {
     let map: Vec<Vec<bool>> = input
         .lines()
         .map(|l| l.chars().map(|c| c != '#').collect())
         .collect();
     let loc = input.find('^').unwrap();
-    let pos = (loc / map[0].len() - 1, loc % (map[0].len() + 1));
+    let pos = Pos::new(loc / map[0].len() - 1, loc % (map[0].len() + 1));
     (map, pos)
-}
-
-fn valid_guard_pos(x: (usize, usize), lim: (usize, usize)) -> bool {
-    // The edges of the map are not valid positions
-    x.0 < lim.0 - 1 && x.1 < lim.1 - 1 && x.0 != 0 && x.1 != 0
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
     let (map, mut pos) = serialize(input);
     let mut next_pos;
-    let lim = (map.len(), map[0].len());
-    let mut dir = Direction::Up;
+    let lim = Pos::new(map.len(), map[0].len());
+    let mut dir = Dir::Up;
     let mut spots = HashSet::new();
 
     loop {
         next_pos = dir.move_pos(pos);
-        // Cannot move forward
-        if !map[next_pos.0][next_pos.1] {
+        if !map[next_pos.row][next_pos.col] {
             dir.next();
             continue;
         }
         // Invalid guard position
-        if !valid_guard_pos(next_pos, lim) {
+        if !next_pos.in_bounds(&lim) {
             break;
         }
         spots.insert(pos);
@@ -73,45 +110,46 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(spots.len() as u32 + 2)
 }
 
-fn visisted_spots(map: &Vec<Vec<bool>>, mut pos: (usize, usize)) -> Vec<(usize, usize)> {
-    let lim = (map.len(), map[0].len());
-    let mut dir = Direction::Up;
-    let mut spots = HashSet::new();
+fn visisted_spots(map: &Vec<Vec<bool>>, mut pos: Pos) -> Vec<Pos> {
+    let lim = Pos::new(map.len(), map[0].len());
+    let mut dir = Dir::Up;
+    let mut spots = vec![];
 
     loop {
         let next_pos = dir.move_pos(pos);
-        if !map[next_pos.0][next_pos.1] {
+        if !map[next_pos.row][next_pos.col] {
             // Cannot move forward
             dir.next();
             continue;
         }
         // Invalid guard position
-        if !valid_guard_pos(next_pos, lim) {
-            spots.insert(pos);
-            spots.insert(next_pos);
+        if !next_pos.in_bounds(&lim) {
+            spots.push(pos);
+            spots.push(next_pos);
             break;
         }
-        spots.insert(pos);
+        if !spots.contains(&pos) {
+            spots.push(pos);
+        }
         pos = next_pos;
     }
 
-    spots.into_iter().collect()
+    spots
 }
 
-pub fn map_loops(map: &Vec<Vec<bool>>, mut pos: (usize, usize)) -> bool {
-    let lim = (map.len(), map[0].len());
-    let mut dir = Direction::Up;
+fn map_loops(map: &Vec<Vec<bool>>, mut pos: Pos, mut dir: Dir) -> bool {
+    let lim = Pos::new(map.len(), map[0].len());
     let mut spots = HashSet::new();
 
     loop {
         let next_pos = dir.move_pos(pos);
-        if !map[next_pos.0][next_pos.1] {
+        if !map[next_pos.row][next_pos.col] {
             // Cannot move forward
             dir.next();
             continue;
         }
         // Invalid guard position
-        if !valid_guard_pos(next_pos, lim) {
+        if !next_pos.in_bounds(&lim) {
             return false;
         }
         if !spots.insert((pos, dir)) {
@@ -127,18 +165,22 @@ pub fn part_two(input: &str) -> Option<u32> {
     let (map, pos) = serialize(input);
     let vis = visisted_spots(&map, pos);
 
-    let ans = vis.par_iter().filter(|(row, col)| {
-        if (*row, *col) == pos {
-            return false;
-        }
-        let mut map = map.clone();
-        map[*row][*col] = false;
-        if map_loops(&map, pos) {
-            return true;
-        }
+    let ans = vis
+        .windows(2)
+        .par_bridge()
+        .filter(|vis| {
+            let start = vis[0];
+            let obstacle = vis[1];
+            let dir = Dir::new(&obstacle, &start);
+            let mut map = map.clone();
+            map[obstacle.row][obstacle.col] = false;
+            if map_loops(&map, start, dir) {
+                return true;
+            }
 
-        false
-    }).count();
+            false
+        })
+        .count();
 
     Some(ans as u32)
 }
