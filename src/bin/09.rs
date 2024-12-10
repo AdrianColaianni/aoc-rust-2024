@@ -1,3 +1,5 @@
+use std::usize;
+
 advent_of_code::solution!(9);
 
 pub fn part_one(input: &str) -> Option<usize> {
@@ -108,15 +110,15 @@ pub fn part_two(input: &str) -> Option<usize> {
                 i -= 1;
                 continue;
             }
-            let mut free_block: Option<(usize, &Node)> = None;
+            let mut free_block = None;
             for i in 0..i {
                 if blocks[i].is_free() && blocks[i].size() >= size {
-                    free_block = Some((i, &blocks[i]));
+                    free_block = Some((i, blocks[i].size()));
                     break;
                 }
             }
-            if let Some((free_idx, free)) = free_block {
-                if size == free.size() {
+            if let Some((free_idx, free_size)) = free_block {
+                if size == free_size {
                     blocks[free_idx] = blocks[i];
                     blocks[i] = Node::Space(size);
                 } else {
@@ -128,7 +130,7 @@ pub fn part_two(input: &str) -> Option<usize> {
                 let mut j = i;
                 let mut lim = (i + 2).min(blocks.len() - 1);
                 loop {
-                    if j == lim {
+                    if j >= lim {
                         break;
                     }
                     if blocks[j].is_free() && blocks[j + 1].is_free() {
