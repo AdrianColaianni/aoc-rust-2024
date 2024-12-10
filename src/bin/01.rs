@@ -3,13 +3,14 @@ use std::collections::HashMap;
 advent_of_code::solution!(1);
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let (mut a, mut b): (Vec<u32>, Vec<u32>) = (vec![], vec![]);
+    let mut a: Vec<u32> = vec![];
+    let mut b: Vec<u32> = vec![];
     let mut res: u32 = 0;
+    let digit_size = input.find(' ').unwrap();
 
-    for l in input.trim().split('\n').into_iter() {
-        let mut l = l.split_whitespace();
-        a.push(l.next().unwrap().parse().unwrap());
-        b.push(l.next().unwrap().parse().unwrap());
+    for i in (0..input.len()).step_by(input.find('\n').unwrap()+1) {
+        a.push(input[i..i+digit_size].parse().unwrap());
+        b.push(input[i+3+digit_size..i+3+digit_size*2].parse().unwrap());
     }
 
     a.sort();
@@ -26,11 +27,11 @@ pub fn part_two(input: &str) -> Option<u32> {
     let mut a: Vec<u32> = vec![];
     let mut b: HashMap<u32, u32> = HashMap::new();
     let mut res: u32 = 0;
+    let digit_size = input.find(' ').unwrap();
 
-    for l in input.trim().split('\n').into_iter() {
-        let mut l = l.split_whitespace();
-        a.push(l.next().unwrap().parse().unwrap());
-        b.entry(l.next().unwrap().parse().unwrap())
+    for i in (0..input.len()).step_by(input.find('\n').unwrap()+1) {
+        a.push(input[i..i+digit_size].parse().unwrap());
+        b.entry(input[i+3+digit_size..i+3+digit_size*2].parse().unwrap())
             .and_modify(|v| *v += 1)
             .or_insert(1);
     }
