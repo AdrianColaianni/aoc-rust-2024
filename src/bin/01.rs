@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 advent_of_code::solution!(1);
 
 pub fn part_one(input: &str) -> Option<u32> {
@@ -25,19 +23,17 @@ pub fn part_one(input: &str) -> Option<u32> {
 
 pub fn part_two(input: &str) -> Option<u32> {
     let mut a: Vec<u32> = vec![];
-    let mut b: HashMap<u32, u32> = HashMap::new();
     let mut res: u32 = 0;
     let digit_size = input.find(' ').unwrap();
+    let mut b: Vec<u32> = vec![0; 10usize.pow(digit_size as u32)];
 
     for i in (0..input.len()).step_by(input.find('\n').unwrap()+1) {
         a.push(input[i..i+digit_size].parse().unwrap());
-        b.entry(input[i+3+digit_size..i+3+digit_size*2].parse().unwrap())
-            .and_modify(|v| *v += 1)
-            .or_insert(1);
+        b[input[i+3+digit_size..i+3+digit_size*2].parse::<usize>().unwrap()] += 1;
     }
 
     for v in a {
-        res += v * b.get(&v).unwrap_or(&0);
+        res += v * b[v as usize];
     }
 
     Some(res)
