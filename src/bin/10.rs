@@ -1,106 +1,90 @@
-use std::collections::HashSet;
-
 advent_of_code::solution!(10);
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Pos {
+struct Map<'a> {
+    data: &'a [u8],
     row: usize,
-    col: usize,
+    col: usize
 }
 
-impl std::fmt::Display for Pos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.row, self.col)
+impl<'a> Map<'a> {
+    fn new(data: &'a str) -> Self {
+        let data = data.trim();
+        let row = data.find('\n').unwrap() + 1;
+        let col = data.matches('\n').count() + 1;
+        let data = data.as_bytes();
+        Self { data, row, col }
     }
-}
 
-impl std::fmt::Debug for Pos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.row, self.col)
+    fn get(&self, row: usize, col: usize) -> char {
+        self.data[row * self.row + col] as char
     }
-}
 
-// More efficient that derive(Hash)
-impl std::hash::Hash for Pos {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let l = self.col.checked_ilog10().map(|v| v + 1).unwrap_or(0);
-        (self.row * 10_usize.pow(l) + self.col).hash(state);
+    fn rows(&self) -> usize {
+        self.row - 1
     }
-}
 
-impl Pos {
-    fn new(row: usize, col: usize) -> Self {
-        Self { row, col }
+    fn cols(&self) -> usize {
+        self.col
     }
 }
 
-fn trail_score(pos: Pos, map: &Vec<Vec<u8>>) -> HashSet<Pos> {
-    if map[pos.row][pos.col] == 9 {
-        return HashSet::from([pos]);
+fn trail_score(row: usize, col: usize, map: &Map, nines: &mut Vec<(usize, usize)>) {
+    if map.get(row, col) == '9' && !nines.contains(&(row, col)) {
+        nines.push((row, col));
+        return;
     }
 
-    let mut v = HashSet::new();
-    let next = map[pos.row][pos.col] + 1;
-    if pos.row > 0 && map[pos.row - 1][pos.col] == next {
-        let mut pos = pos;
-        pos.row -= 1;
-        v = v.union(&trail_score(pos, map)).copied().collect();
+    let next = (map.get(row, col) as u8 + 1) as char;
+    if row > 0 && map.get(row - 1, col) == next {
+        trail_score(row - 1, col, map, nines);
     }
-    if pos.row + 1 < map.len() && map[pos.row + 1][pos.col] == next {
-        let mut pos = pos;
-        pos.row += 1;
-        v = v.union(&trail_score(pos, map)).copied().collect();
+    if row + 1 < map.rows() && map.get(row + 1, col) == next {
+        trail_score(row + 1, col, map, nines);
     }
-    if pos.col > 0 && map[pos.row][pos.col - 1] == next {
-        let mut pos = pos;
-        pos.col -= 1;
-        v = v.union(&trail_score(pos, map)).copied().collect();
+    if col > 0 && map.get(row, col - 1) == next {
+        trail_score(row, col - 1, map, nines);
     }
-    if pos.col + 1 < map[0].len() && map[pos.row][pos.col + 1] == next {
-        let mut pos = pos;
-        pos.col += 1;
-        v = v.union(&trail_score(pos, map)).copied().collect();
+    if col + 1 < map.cols() && map.get(row, col + 1) == next {
+        trail_score(row, col + 1, map, nines);
     }
-
-    v
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let input: Vec<Vec<u8>> = input
-        .lines()
-        .map(|l| l.chars().map(|c| c.to_digit(10).unwrap() as u8).collect())
-        .collect();
+    let map = Map::new(input);
 
     let mut ans = 0;
 
-    for row in 0..input.len() {
-        for col in 0..input[0].len() {
-            if input[row][col] == 0 {
-                ans += trail_score(Pos::new(row, col), &input).len() as u32;
+    for row in 0..map.rows() {
+        for col in 0..map.cols() {
+            if map.get(row, col) != '0' {
+                continue;
             }
+            let mut nines = vec![];
+            trail_score(row, col, &map, &mut nines);
+            ans += nines.len() as u32;
         }
     }
 
     Some(ans)
 }
 
-fn trail_score_p2(row: usize, col: usize, map: &Vec<Vec<u8>>) -> u32 {
-    if map[row][col] == 9 {
+fn trail_score_p2(row: usize, col: usize, map: &Map) -> u32 {
+    if map.get(row, col) == '9' {
         return 1;
     }
 
     let mut v = 0;
-    let next = map[row][col] + 1;
-    if row > 0 && map[row - 1][col] == next {
+    let next = (map.get(row, col) as u8 + 1) as char;
+    if row > 0 && map.get(row - 1, col) == next {
         v += trail_score_p2(row - 1, col, map);
     }
-    if row + 1 < map.len() && map[row + 1][col] == next {
+    if row + 1 < map.rows() && map.get(row + 1, col) == next {
         v += trail_score_p2(row + 1, col, map);
     }
-    if col > 0 && map[row][col - 1] == next {
+    if col > 0 && map.get(row, col - 1) == next {
         v += trail_score_p2(row, col - 1, map);
     }
-    if col + 1 < map[0].len() && map[row][col + 1] == next {
+    if col + 1 < map.cols() && map.get(row, col + 1) == next {
         v += trail_score_p2(row, col + 1, map);
     }
 
@@ -108,17 +92,14 @@ fn trail_score_p2(row: usize, col: usize, map: &Vec<Vec<u8>>) -> u32 {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let input: Vec<Vec<u8>> = input
-        .lines()
-        .map(|l| l.chars().map(|c| c.to_digit(10).unwrap() as u8).collect())
-        .collect();
+    let map = Map::new(input);
 
     let mut ans = 0;
 
-    for row in 0..input.len() {
-        for col in 0..input[0].len() {
-            if input[row][col] == 0 {
-                ans += trail_score_p2(row, col, &input);
+    for row in 0..map.rows() {
+        for col in 0..map.cols() {
+            if map.get(row, col) == '0' {
+                ans += trail_score_p2(row, col, &map);
             }
         }
     }
