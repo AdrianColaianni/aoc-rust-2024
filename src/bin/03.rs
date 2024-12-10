@@ -19,17 +19,18 @@ pub fn part_two(input: &str) -> Option<u32> {
     let mut v = 0;
     let mut doit = true;
     for cap in re.captures_iter(input) {
-        match &cap[0][0..3] {
-            "do(" => doit = true,
-            "don" => doit = false,
-            "mul" => {
-                if doit {
+        if doit {
+            match &cap[0][0..3] {
+                "don" => doit = false,
+                "mul" => {
                     let x: u32 = cap[1].parse().unwrap();
                     let y: u32 = cap[2].parse().unwrap();
                     v += x * y;
                 }
+                _ => (),
             }
-            _ => panic!(),
+        } else if &cap[0][0..3] == "do(" {
+            doit = true;
         }
     }
 
