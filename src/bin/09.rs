@@ -97,11 +97,17 @@ pub fn part_two(input: &str) -> Option<usize> {
     }
 
     let mut i = blocks.len() - 1;
+    // Keeps track of size of free space left
+    let mut too_big = 10;
     loop {
         if i == 0 {
             break;
         }
         if let Node::File(_, size) = blocks[i] {
+            if size >= too_big {
+                i -= 1;
+                continue;
+            }
             let mut free_block: Option<(usize, &Node)> = None;
             for i in 0..i {
                 if blocks[i].is_free() && blocks[i].size() >= size {
@@ -133,10 +139,13 @@ pub fn part_two(input: &str) -> Option<usize> {
                         j += 1;
                     }
                 }
-            } else if size == 1 {
-                // If the size is 1 and we can't find a spot to move it,
-                // everything is filled
-                break;
+            } else {
+                if size == 1 {
+                    // If the size is 1 and we can't find a spot to move it,
+                    // everything is filled
+                    break;
+                }
+                too_big = size;
             }
         }
         i -= 1;
