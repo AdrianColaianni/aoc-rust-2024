@@ -2,70 +2,53 @@ use std::collections::HashMap;
 
 advent_of_code::solution!(11);
 
-pub fn part_one(input: &str) -> Option<u32> {
-    let mut stones: Vec<usize> = input
-        .trim()
-        .split(' ')
-        .map(|s| s.parse().unwrap())
-        .collect();
-
-    for _ in 0..25 {
-        let mut i = 0;
-        loop {
-            if i >= stones.len() {
-                break;
-            }
-            let s = stones[i];
-            if s == 0 {
-                stones[i] = 1;
-                i += 1;
-                continue;
-            }
-            let len = s.ilog10() + 1;
-            if len % 2 == 0 {
-                let f = 10_usize.pow(len / 2);
-                stones[i] = s % f;
-                stones.insert(i, s / f);
-                i += 2;
-                continue;
-            }
-
-            stones[i] *= 2024;
-            i += 1;
-        }
+pub fn blink(s: usize, depth: usize) -> usize {
+    if depth == 0 {
+        return 1;
     }
 
-    Some(stones.len() as u32)
+    if s == 0 {
+        return blink(1, depth - 1);
+    }
+
+    let len = s.ilog10() + 1;
+    if len % 2 == 0 {
+        let f = 10_usize.pow(len / 2);
+        return blink(s / f, depth - 1) + blink(s % f, depth - 1);
+    }
+
+    return blink(s * 2024, depth - 1);
 }
 
-pub fn blink(s: usize, blinks: usize) -> Vec<usize> {
-    let mut stones = vec![s];
-    for _ in 0..blinks {
-        let mut i = 0;
-        loop {
-            if i >= stones.len() {
-                break;
-            }
-            let s = stones[i];
-            if s == 0 {
-                stones[i] = 1;
-                i += 1;
-                continue;
-            }
-            let len = s.ilog10() + 1;
-            if len % 2 == 0 {
-                let f = 10_usize.pow(len / 2);
-                stones[i] = s % f;
-                stones.insert(i, s / f);
-                i += 2;
-                continue;
-            }
+pub fn part_one(input: &str) -> Option<u32> {
+    let ans: usize = input
+        .trim()
+        .split(' ')
+        .map(|s| blink(s.parse().unwrap(), 25))
+        .sum();
+    Some(ans as u32)
+}
 
-            stones[i] *= 2024;
-            i += 1;
-        }
+pub fn blink_vec(s: usize, depth: usize) -> Vec<usize> {
+    if depth == 0 {
+        return vec![s];
     }
 
+    let mut stones = vec![];
+    if s == 0 {
+        stones.append(&mut blink_vec(1, depth - 1));
+        return stones;
+    }
+
+    let len = s.ilog10() + 1;
+    if len % 2 == 0 {
+        let f = 10_usize.pow(len / 2);
+        stones.append(&mut blink_vec(s / f, depth - 1));
+        stones.append(&mut blink_vec(s % f, depth - 1));
+        return stones;
+    }
+
+    stones.append(&mut blink_vec(s * 2024, depth - 1));
     stones
 }
 
@@ -89,7 +72,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     for stone in stones {
         let mut b = twenty_five_blinks
             .entry(stone)
-            .or_insert_with(|| blink(stone, 25))
+            .or_insert_with(|| blink_vec(stone, 25))
             .clone();
         first.append(&mut b);
     }
@@ -102,7 +85,7 @@ pub fn part_two(input: &str) -> Option<usize> {
             .or_insert_with(|| {
                 let b = twenty_five_blinks
                     .entry(stone)
-                    .or_insert_with(|| blink(stone, 25))
+                    .or_insert_with(|| blink_vec(stone, 25))
                     .clone();
                 (b, 1)
             });
@@ -117,7 +100,7 @@ pub fn part_two(input: &str) -> Option<usize> {
                 .or_insert_with(|| {
                     let b = twenty_five_blinks
                         .entry(stone)
-                        .or_insert_with(|| blink(stone, 25))
+                        .or_insert_with(|| blink_vec(stone, 25))
                         .clone();
                     (b, v.1)
                 });
@@ -128,6 +111,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     for (v, c) in third.values() {
         ans += c * v.len();
     }
+
     Some(ans)
 }
 
@@ -144,6 +128,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(65601038650482));
     }
 }
