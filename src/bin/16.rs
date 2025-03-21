@@ -2,198 +2,136 @@ use std::collections::BinaryHeap;
 
 advent_of_code::solution!(16);
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+type Map = Vec<Vec<char>>;
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Dir {
-    North,
-    East,
-    South,
-    West,
+    Forward,
+    Left,
+    Right,
 }
 
-impl std::fmt::Display for Dir {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Dir::North => write!(f, "^"),
-            Dir::East => write!(f, ">"),
-            Dir::South => write!(f, "v"),
-            Dir::West => write!(f, "<"),
-        }
-    }
-}
-
-impl Dir {
-    pub fn left(&self) -> Self {
-        match self {
-            Dir::North => Dir::West,
-            Dir::East => Dir::North,
-            Dir::South => Dir::East,
-            Dir::West => Dir::South,
-        }
-    }
-
-    pub fn right(&self) -> Self {
-        match self {
-            Dir::North => Dir::East,
-            Dir::East => Dir::South,
-            Dir::South => Dir::West,
-            Dir::West => Dir::North,
-        }
-    }
-}
-
-#[derive(Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 struct Pos {
     r: usize,
     c: usize,
-    dir: Dir,
+    o: usize, // Orientation: 0: North, 1: East, 2: South, 3: West
     cost: usize,
 }
 
 impl std::fmt::Debug for Pos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {}, {}, {})", self.r, self.c, self.dir, self.cost)
+        write!(f, "({}, {}) {} {}", self.r, self.c, self.o, self.cost)
     }
 }
 
-impl PartialEq for Pos {
-    fn eq(&self, other: &Self) -> bool {
-        // self.cost.eq(&other.cost)
-        self.r == other.r && self.c == other.c
-    }
-}
-
-impl PartialOrd for Pos {
+impl std::cmp::PartialOrd for Pos {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.cost.partial_cmp(&self.cost)
     }
 }
 
-impl Ord for Pos {
+impl std::cmp::Ord for Pos {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other.cost.cmp(&self.cost)
     }
 }
 
 impl Pos {
-    pub fn new(r: usize, c: usize, dir: Dir, cost: usize) -> Self {
-        Self { r, c, dir, cost }
+    pub fn new(r: usize, c: usize, cost: usize) -> Self {
+        Self { r, c, o: 1, cost }
     }
 
-    pub fn options(&self, map: &Vec<Vec<char>>) -> Vec<Self> {
-        let mut options = vec![];
-        let Self { r, c, dir, cost } = self;
-
-        // Go North
-        if *dir != Dir::South && *r != 0 && map[r - 1][*c] != '#' {
-            let mut cost = cost + 1;
-            if *dir != Dir::North {
-                cost += 1000;
-            }
-            options.push(Self::new(r - 1, *c, Dir::North, cost));
-        }
-
-        // Go East
-        if *dir != Dir::West && c + 1 != map[*r].len() && map[*r][c + 1] != '#' {
-            let mut cost = cost + 1;
-            if *dir != Dir::East {
-                cost += 1000;
-            }
-            options.push(Self::new(*r, c + 1, Dir::East, cost));
-        }
-
-        // Go South
-        if *dir != Dir::North && r + 1 != map.len() && map[r + 1][*c] != '#' {
-            let mut cost = cost + 1;
-            if *dir != Dir::South {
-                cost += 1000;
-            }
-            options.push(Self::new(r + 1, *c, Dir::South, cost));
-        }
-
-        // Go West
-        if *dir != Dir::East && *c != 0 && map[*r][c - 1] != '#' {
-            let mut cost = cost + 1;
-            if *dir != Dir::West {
-                cost += 1000;
-            }
-            options.push(Self::new(*r, c - 1, Dir::West, cost));
-        }
-        /*
-        // Go forward
-        let f = self.forward();
-        if map[f.0][f.1] != '#' {
-            options.push(Self::new(f.0, f.1, *dir, cost + 1));
-        }
-        // Turn left
-        options.push(Self::new(*r, *c, dir.left(), cost + 1000));
-        // Turn right
-        options.push(Self::new(*r, *c, dir.right(), cost + 1000));
-        */
-
-        options
+    fn turn_left(&self) -> Self {
+        let mut r = self.clone();
+        r.o = r.o.wrapping_sub(1) % 4;
+        r.cost += 1000;
+        r
     }
 
-    fn forward(&self) -> (usize, usize) {
-        let Self { r, c, dir, .. } = self;
-        match dir {
-            Dir::North => (r - 1, *c),
-            Dir::East => (*r, c + 1),
-            Dir::South => (r + 1, *c),
-            Dir::West => (*r, c - 1),
+    fn turn_right(&self) -> Self {
+        let mut r = self.clone();
+        r.o = r.o.wrapping_add(1) % 4;
+        r.cost += 1000;
+        r
+    }
+
+    fn try_forward(&self, map: &Map) -> Option<Self> {
+        let Self {
+            mut r,
+            mut c,
+            o,
+            mut cost,
+        } = self.clone();
+
+        match o {
+            0 => r -= 1, // North
+            1 => c += 1, // East
+            2 => r += 1, // South
+            _ => c -= 1, // West
         }
+
+        if map[r][c] == '#' {
+            return None;
+        }
+
+        cost += 1;
+
+        Some(Self { r, c, o, cost })
+    }
+
+    pub fn options(&self, map: &Map) -> Vec<Self> {
+        let mut op = vec![];
+        op.push(self.turn_left());
+        op.push(self.turn_right());
+        if let Some(f) = self.try_forward(map) {
+            op.push(f);
+        }
+        op
     }
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let map: Vec<Vec<char>> = input.lines().map(|l| l.chars().collect()).collect();
-    // for row in &map {
-    //     for c in row {
-    //         print!("{}", c);
-    //     }
-    //     println!();
-    // }
-
-    let end = Pos::new(1, map[0].len() - 2, Dir::North, 0);
-    println!("End: {}", map[1][map[0].len() - 2]);
-
-    let mut heap = BinaryHeap::new();
-
-    let mut dist: Vec<Vec<Option<usize>>> = (0..map.len())
-        .map(|_| (0..map[0].len()).map(|_| None).collect())
+    let map: Map = input
+        .lines()
+        .map(|l| l.chars().collect())
         .collect();
+    let size = map.len();
 
-    // Add start
-    heap.push(Pos::new(map.len() - 2, 1, Dir::East, 0));
-    println!("Start: {}", map[map.len() - 2][1]);
-    dist[map.len() - 2][1] = Some(0);
+    let mut cost: Vec<Vec<[usize; 4]>> = (0..size)
+        .map(|_| (0..size).map(|_| [usize::MAX; 4]).collect())
+        .collect();
+    cost[size - 2][1][1] = 0;
 
-    println!("Heap {:?}", heap);
+    let mut heap: BinaryHeap<Pos> = BinaryHeap::new();
+    heap.push(Pos::new(size - 2, 1, 0));
+
     while let Some(pos) = heap.pop() {
-        if pos == end {
-            // Print map
-            for r in 0..map.len() {
-                for c in 0..map[0].len() {
-                    if let Some(c) = dist[r][c] {
-                        print!("{}", c % 10);
-                    } else {
-                        print!("{}", map[r][c]);
-                    }
-                }
-                println!();
-            }
+        // println!("{:?}", heap);
+        if pos.r == 1 && pos.c == size - 2 {
+            // for r in 0..size {
+            //     for c in 0..size {
+            //         if cost[r][c] != usize::MAX {
+            //             print!("{}", cost[r][c] % 10);
+            //         } else {
+            //             print!("{}", map[r][c]);
+            //         }
+            //     }
+            //     println!();
+            // }
             return Some(pos.cost);
         }
-        if dist[pos.r][pos.c].is_some_and(|c| pos.cost > c) {
+
+        if pos.cost > cost[pos.r][pos.c][pos.o] {
             continue;
         }
 
         for next in pos.options(&map) {
-            if dist[next.r][next.c].is_none_or(|c| next.cost < c) {
-                dist[next.r][next.c] = Some(next.cost);
+            if next.cost < cost[next.r][next.c][next.o] {
                 heap.push(next);
+                cost[next.r][next.c][next.o] = next.cost;
             }
         }
-        println!("Heap {:?}", heap);
     }
 
     None
