@@ -4,25 +4,12 @@ advent_of_code::solution!(16);
 
 type Map = Vec<Vec<char>>;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-enum Dir {
-    Forward,
-    Left,
-    Right,
-}
-
 #[derive(PartialEq, Eq, Clone, Copy)]
 struct Pos {
     r: usize,
     c: usize,
     o: usize, // Orientation: 0: North, 1: East, 2: South, 3: West
     cost: usize,
-}
-
-impl std::fmt::Debug for Pos {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {}) {} {}", self.r, self.c, self.o, self.cost)
-    }
 }
 
 impl std::cmp::PartialOrd for Pos {
@@ -42,27 +29,15 @@ impl Pos {
         Self { r, c, o: 1, cost }
     }
 
-    fn turn_left(&self) -> Self {
-        let mut r = self.clone();
-        r.o = r.o.wrapping_sub(1) % 4;
-        r.cost += 1000;
-        r
-    }
-
-    fn turn_right(&self) -> Self {
-        let mut r = self.clone();
-        r.o = r.o.wrapping_add(1) % 4;
-        r.cost += 1000;
-        r
-    }
-
-    fn try_forward(&self, map: &Map) -> Option<Self> {
+    fn try_forward(&self, dir: isize, map: &Map) -> Option<Self> {
         let Self {
             mut r,
             mut c,
-            o,
+            mut o,
             mut cost,
         } = self.clone();
+
+        o = ((o as isize).wrapping_add(dir)) as usize % 4;
 
         match o {
             0 => r -= 1, // North
@@ -75,19 +50,17 @@ impl Pos {
             return None;
         }
 
-        cost += 1;
+        if dir == 0 {
+            cost += 1;
+        } else {
+            cost += 1001;
+        }
 
         Some(Self { r, c, o, cost })
     }
 
     pub fn options(&self, map: &Map) -> Vec<Self> {
-        let mut op = vec![];
-        op.push(self.turn_left());
-        op.push(self.turn_right());
-        if let Some(f) = self.try_forward(map) {
-            op.push(f);
-        }
-        op
+        (-1..=1).filter_map(|d| self.try_forward(d, map)).collect()
     }
 }
 
@@ -107,18 +80,7 @@ pub fn part_one(input: &str) -> Option<usize> {
     heap.push(Pos::new(size - 2, 1, 0));
 
     while let Some(pos) = heap.pop() {
-        // println!("{:?}", heap);
         if pos.r == 1 && pos.c == size - 2 {
-            // for r in 0..size {
-            //     for c in 0..size {
-            //         if cost[r][c] != usize::MAX {
-            //             print!("{}", cost[r][c] % 10);
-            //         } else {
-            //             print!("{}", map[r][c]);
-            //         }
-            //     }
-            //     println!();
-            // }
             return Some(pos.cost);
         }
 
