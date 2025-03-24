@@ -1,15 +1,31 @@
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 advent_of_code::solution!(16);
 
 type Map = Vec<Vec<char>>;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+// type Prev = Vec<Vec<Vec<(usize, usize)>>>;
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
 struct Pos {
     r: usize,
     c: usize,
     o: usize, // Orientation: 0: North, 1: East, 2: South, 3: West
     cost: usize,
+}
+
+// impl std::hash::Hash for Pos {
+//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+//         self.r.hash(state);
+//         self.c.hash(state);
+//         self.o.hash(state);
+//     }
+// }
+
+impl std::fmt::Debug for Pos {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {}) {} - {}", self.r, self.c, self.o, self.cost)
+    }
 }
 
 impl std::cmp::PartialOrd for Pos {
@@ -65,10 +81,7 @@ impl Pos {
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let map: Map = input
-        .lines()
-        .map(|l| l.chars().collect())
-        .collect();
+    let map: Map = input.lines().map(|l| l.chars().collect()).collect();
     let size = map.len();
 
     let mut cost: Vec<Vec<[usize; 4]>> = (0..size)
@@ -99,8 +112,58 @@ pub fn part_one(input: &str) -> Option<usize> {
     None
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let map: Map = input.lines().map(|l| l.chars().collect()).collect();
+    let size = map.len();
+
+    let mut cost: Vec<Vec<[usize; 4]>> = (0..size)
+        .map(|_| (0..size).map(|_| [usize::MAX; 4]).collect())
+        .collect();
+    cost[size - 2][1][1] = 0;
+
+    let mut prev: HashMap<Pos, Vec<Pos>> = HashMap::new();
+
+    let mut heap: BinaryHeap<Pos> = BinaryHeap::new();
+    heap.push(Pos::new(size - 2, 1, 0));
+
+    let mut trace = vec![];
+
+    while let Some(pos) = heap.pop() {
+        if pos.r == 1 && pos.c == size - 2 {
+            trace.push(pos);
+            break;
+        }
+
+        if pos.cost > cost[pos.r][pos.c][pos.o] {
+            continue;
+        }
+
+        for next in pos.options(&map) {
+            if next.cost < cost[next.r][next.c][next.o] {
+                heap.push(next);
+                cost[next.r][next.c][next.o] = next.cost;
+            }
+            if next.cost <= cost[next.r][next.c][next.o] {
+                prev.entry(next)
+                    .and_modify(|v| v.push(pos))
+                    .or_insert(vec![pos]);
+            }
+        }
+    }
+
+    let mut spath = HashSet::new();
+    while !trace.is_empty() {
+        for p in &trace {
+            spath.insert((p.r, p.c));
+        }
+        trace = trace
+            .into_iter()
+            .filter_map(|p| prev.get(&p).map(|v| v.clone()))
+            .flatten()
+            .collect();
+    }
+
+    Some(spath.len())
 }
 
 #[cfg(test)]
