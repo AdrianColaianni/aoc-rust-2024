@@ -1,10 +1,8 @@
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap};
 
 advent_of_code::solution!(16);
 
 type Map = Vec<Vec<char>>;
-
-// type Prev = Vec<Vec<Vec<(usize, usize)>>>;
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 struct Pos {
@@ -13,14 +11,6 @@ struct Pos {
     o: usize, // Orientation: 0: North, 1: East, 2: South, 3: West
     cost: usize,
 }
-
-// impl std::hash::Hash for Pos {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         self.r.hash(state);
-//         self.c.hash(state);
-//         self.o.hash(state);
-//     }
-// }
 
 impl std::fmt::Debug for Pos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -112,6 +102,16 @@ pub fn part_one(input: &str) -> Option<usize> {
     None
 }
 
+fn count_spaces(p: &Pos, prev: &HashMap<Pos, Vec<Pos>>) -> usize {
+    if let Some(p) = prev.get(p) {
+        p.into_iter()
+            .map(|p| count_spaces(p, prev))
+            .sum()
+    } else {
+        1
+    }
+}
+
 pub fn part_two(input: &str) -> Option<usize> {
     let map: Map = input.lines().map(|l| l.chars().collect()).collect();
     let size = map.len();
@@ -126,11 +126,11 @@ pub fn part_two(input: &str) -> Option<usize> {
     let mut heap: BinaryHeap<Pos> = BinaryHeap::new();
     heap.push(Pos::new(size - 2, 1, 0));
 
-    let mut trace = vec![];
+    let mut end = Pos::new(1, size - 2, 0);
 
     while let Some(pos) = heap.pop() {
         if pos.r == 1 && pos.c == size - 2 {
-            trace.push(pos);
+            end = pos;
             break;
         }
 
@@ -151,19 +151,7 @@ pub fn part_two(input: &str) -> Option<usize> {
         }
     }
 
-    let mut spath = HashSet::new();
-    while !trace.is_empty() {
-        for p in &trace {
-            spath.insert((p.r, p.c));
-        }
-        trace = trace
-            .into_iter()
-            .filter_map(|p| prev.get(&p).map(|v| v.clone()))
-            .flatten()
-            .collect();
-    }
-
-    Some(spath.len())
+    Some(count_spaces(&end, &prev))
 }
 
 #[cfg(test)]

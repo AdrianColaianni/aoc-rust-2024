@@ -163,26 +163,6 @@ impl Dir {
         }
         Some(pos)
     }
-
-    fn move_right(&self, mut pos: Pos, bounds: &Pos) -> Option<Pos> {
-        match self {
-            Dir::Up => {
-                pos.col += 1;
-                if pos.col == bounds.col {
-                    return None;
-                }
-            }
-            Dir::Right => {
-                pos.row += 1;
-                if pos.row == bounds.row {
-                    return None;
-                }
-            }
-            Dir::Down => pos.col = pos.col.checked_sub(1)?,
-            Dir::Left => pos.row = pos.row.checked_sub(1)?,
-        }
-        Some(pos)
-    }
 }
 
 fn find_plot(input: &Vec<Vec<char>>, pos: Pos, bounds: &Pos) -> Vec<Pos> {
@@ -206,7 +186,6 @@ fn find_plot(input: &Vec<Vec<char>>, pos: Pos, bounds: &Pos) -> Vec<Pos> {
 }
 
 struct Region {
-    area: Vec<Pos>,
     size: usize,
     sides: usize,
 }
@@ -215,7 +194,6 @@ impl Region {
     fn new(area: Vec<Pos>, sides: usize) -> Self {
         Self {
             size: area.len(),
-            area,
             sides,
         }
     }
@@ -253,7 +231,6 @@ pub fn part_one(input: &str) -> Option<u32> {
             for pos in &area {
                 ignore.insert(*pos);
             }
-            // println!("{}: {}, {}", input[row][col], area.len(), bounds(&area));
             total += area.len() * bounds(&area);
         }
     }
@@ -274,8 +251,6 @@ fn on_boarder(input: &Vec<Vec<char>>, pos: &Pos, dir: Dir, limits: &Pos) -> bool
 // We make a little guy who walks around and counts the sides
 // Return sides and corners on sides
 fn bounds_p2(input: &Vec<Vec<char>>, area: &Vec<Pos>, limits: &Pos) -> usize {
-    let pos = area.first().unwrap();
-    println!("Checking bounds for {}: {:?}", input[pos.row][pos.col], area);
     if area.len() == 1 {
         // My program cannot handle size 1, so we hard code :)
         return 4;
@@ -293,7 +268,6 @@ fn bounds_p2(input: &Vec<Vec<char>>, area: &Vec<Pos>, limits: &Pos) -> usize {
             if visited.contains(&(pos, dir)) || !on_boarder(input, &pos, dir, limits) {
                 continue;
             }
-            println!("Little guy is running: {:?} {:?}", pos, dir);
             visited.insert((pos, dir));
             loop {
                 if them_turns != 0 && *start == pos && start_dir == dir {
@@ -303,7 +277,6 @@ fn bounds_p2(input: &Vec<Vec<char>>, area: &Vec<Pos>, limits: &Pos) -> usize {
                 //     panic!("Exceeded turn limit");
                 // }
 
-                println!("Little guy: {:?} {:?}", pos, dir);
 
                 if let Some(next_pos) = dir.wrap_left(pos, limits) {
                     let mut ndir = dir;
@@ -312,12 +285,10 @@ fn bounds_p2(input: &Vec<Vec<char>>, area: &Vec<Pos>, limits: &Pos) -> usize {
                     let border = border.is_none()
                         || border.is_some_and(|p| input[p.row][p.col] != input[pos.row][pos.col]);
                     if area.contains(&next_pos) && border {
-                        println!("Wraping left");
                         dir.turn_left();
                         them_turns += 1;
                         pos = next_pos;
                         if !visited.insert((pos, dir)) && *start != pos && start_dir != dir {
-                            println!("We've been here before");
                             them_turns = 0;
                             break;
                         }
@@ -329,10 +300,8 @@ fn bounds_p2(input: &Vec<Vec<char>>, area: &Vec<Pos>, limits: &Pos) -> usize {
                     let border = border.is_none()
                         || border.is_some_and(|p| input[p.row][p.col] != input[pos.row][pos.col]);
                     if area.contains(&next_pos) && border {
-                        println!("Moving forward");
                         pos = next_pos;
                         if !visited.insert((pos, dir)) && *start != pos && start_dir != dir {
-                            println!("We've been here before");
                             them_turns = 0;
                             break;
                         }
@@ -340,11 +309,9 @@ fn bounds_p2(input: &Vec<Vec<char>>, area: &Vec<Pos>, limits: &Pos) -> usize {
                     }
                 }
                 // At dead end, turn around
-                println!("Turning right");
                 dir.turn_right();
                 them_turns += 1;
             }
-            println!("Profited {} turns from that!", them_turns);
             turns += them_turns;
         }
     }
@@ -370,7 +337,6 @@ pub fn part_two(input: &str) -> Option<u32> {
                 ignore.insert(*pos);
             }
             let sides = bounds_p2(&input, &area, &limits);
-            println!("{}: {}, {}", input[row][col], area.len(), sides);
             let region = Region::new(area, sides);
             regions.push(region);
         }
