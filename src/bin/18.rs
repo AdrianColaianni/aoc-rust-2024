@@ -147,9 +147,9 @@ pub fn part_two(input: &str) -> Option<String> {
     // Binary search for the solution
     let mut low = 0;
     let mut high = lines.len() - 1;
-    let mut mid;
+    let mut mid = 0;
     let mut v = false;
-    while low < high {
+    while low <= high {
         mid = (low + high) / 2;
         // Build map
         let mut map = vec![vec![true; size]; size];
@@ -166,10 +166,10 @@ pub fn part_two(input: &str) -> Option<String> {
         }
     }
     if v {
-        low += 1;
+        mid += 1;
     }
-    let ret = lines[low];
-    return Some(format!("{},{}", ret.0, ret.1));
+    let ret = lines[mid];
+    return Some(format!("{},{}", ret.1, ret.0));
 }
 
 #[cfg(test)]
