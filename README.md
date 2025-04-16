@@ -30,6 +30,7 @@ My solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://w
 | [Day 17](./src/bin/17.rs) | `1.3µs` | `39.2µs` |
 | [Day 18](./src/bin/18.rs) | `356.6µs` | `736.6µs` |
 | [Day 19](./src/bin/19.rs) | `278.7µs` | `5.4ms` |
+| [Day 20](./src/bin/20.rs) | `477.6µs` | `-` |
 
-**Total: 103.36ms**
+**Total: 103.84ms**
 <!--- benchmarking table --->
