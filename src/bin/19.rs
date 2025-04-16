@@ -10,14 +10,14 @@ fn parse_input(input: &str) -> (Vec<String>, Vec<String>) {
 }
 
 struct Node {
-    next: [Option<Box<Node>>; 26],
+    next: [Option<Box<Node>>; 5],
     end: bool,
 }
 
 impl Node {
     pub fn new(end: bool) -> Self {
         Self {
-            next: [const { None }; 26],
+            next: [const { None }; 5],
             end,
         }
     }
@@ -27,8 +27,11 @@ impl Node {
             self.end = true;
             return;
         }
-        let c = input.chars().next().unwrap();
-        let c = c as usize - 'a' as usize;
+        let mut c = input.chars().next().unwrap() as usize;
+        c = c % 10 - 3;
+        if c > 2 {
+            c -= 2
+        }
         let n = self.next[c].get_or_insert(Box::new(Node::new(false)));
         n.add(&input[1..]);
     }
@@ -37,8 +40,11 @@ impl Node {
         if input.len() == 0 {
             return self.end;
         }
-        let c = input.chars().next().unwrap();
-        let c = c as usize - 'a' as usize;
+        let mut c = input.chars().next().unwrap() as usize;
+        c = c % 10 - 3;
+        if c > 2 {
+            c -= 2
+        }
         if self.next[c]
             .as_ref()
             .is_some_and(|n| n.check(root, &input[1..]))
@@ -59,8 +65,11 @@ impl Node {
             }
         }
 
-        let c = input.chars().next().unwrap();
-        let c = c as usize - 'a' as usize;
+        let mut c = input.chars().next().unwrap() as usize;
+        c = c % 10 - 3;
+        if c > 2 {
+            c -= 2
+        }
         let mut t = 0;
         if let Some(n) = &self.next[c] {
             t += n.check_count(root, cache, &input[1..]);
