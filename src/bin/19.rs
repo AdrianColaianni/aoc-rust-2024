@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 advent_of_code::solution!(19);
 
 fn parse_input(input: &str) -> (Vec<String>, Vec<String>) {
@@ -45,6 +47,33 @@ impl Node {
         }
         self.end && root.check(root, input)
     }
+
+    pub fn check_count<'i>(&self, root: &Node, cache: &mut HashMap<&'i str, usize>, input: &'i str) -> usize {
+        if input.len() == 0 {
+            return self.end as usize;
+        }
+        let s = std::ptr::eq(self, root);
+        if s {
+            if let Some(&count) = cache.get(input) {
+                return count;
+            }
+        }
+
+        let c = input.chars().next().unwrap();
+        let c = c as usize - 'a' as usize;
+        let mut t = 0;
+        if let Some(n) = &self.next[c] {
+            t += n.check_count(root, cache, &input[1..]);
+        }
+        if self.end {
+            t += root.check_count(root, cache, input);
+        }
+        if s {
+            cache.insert(input, t);
+        }
+
+        t
+    }
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
@@ -66,7 +95,21 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    None
+    let (t, d) = parse_input(input);
+    let mut root = Node::new(false);
+
+    for t in &t {
+        root.add(t);
+    }
+
+    let mut cache = HashMap::new();
+
+    let mut c = 0;
+    for d in &d {
+        c += root.check_count(&root, &mut cache, d);
+    }
+
+    Some(c)
 }
 
 #[cfg(test)]
@@ -82,6 +125,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(16));
     }
 }
